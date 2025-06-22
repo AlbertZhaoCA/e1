@@ -412,7 +412,7 @@ class RayPPOTrainer:
             scores = reward_tensor.sum(-1).cpu().tolist()
             sample_inputs.extend(input_texts)
             sample_outputs.extend(output_texts)
-            sample_labels.extend(test_batch.non_tensor_batch["ground_truth"].tolist())
+            # sample_labels.extend(test_batch.non_tensor_batch["ground_truth"].tolist())
             sample_scores.extend(scores)
 
             reward_tensor_lst.append(reward_tensor)
@@ -553,7 +553,7 @@ class RayPPOTrainer:
             self.logger.log(data=val_metrics, step=self.global_step)
             if self.config.trainer.val_only:
                 return
-
+        
         self.data_iterator = iter(self.train_dataloader)
         while self.global_step < self.training_steps:
             self.global_step += 1
@@ -573,16 +573,19 @@ class RayPPOTrainer:
 
                 # compute global valid tokens
                 batch.meta_info["global_token_num"] = torch.sum(batch.batch["attention_mask"], dim=-1).tolist()
-
+                print("------compute reward-------")
                 # compute reward
                 if "token_level_scores" not in batch.batch:
                     with timer("reward", timing_raw):
                         reward_ref = self.reward_fn.compute_reward.remote(batch)
+                print("------compute old log_probs-------")
 
                 # recompute old_log_probs
                 with timer("old", timing_raw):
                     old_log_probs = self.actor_rollout_ref_wg.compute_log_probs(batch)
                     batch = batch.union(old_log_probs)
+                    
+                print("------compute new log_probs-------")
 
                 # compute ref_log_probs
                 if self.use_reference_policy:
@@ -590,28 +593,36 @@ class RayPPOTrainer:
                         ref_log_probs = self.actor_rollout_ref_wg.compute_ref_log_probs(batch)
                         batch = batch.union(ref_log_probs)
 
+                print("------compute values-------")
                 # compute values
                 if self.use_critic:
                     with timer("values", timing_raw):
                         values = self.critic_wg.compute_values(batch)
                         batch = batch.union(values)
-
+                print("----finish compute values-----")
                 with timer("adv", timing_raw):
                     if "token_level_scores" not in batch.batch:
+                        print("get token level scores asynchronously")
                         # get token level scores asynchronously
+                        print(reward_ref)
                         reward_tensor, reward_metrics = ray.get(reward_ref)
+                        print(reward_tensor)
                         batch.batch["token_level_scores"] = reward_tensor
                         reward_metrics = {f"reward/{k}": v for k, v in reduce_metrics(reward_metrics).items()}
                         metrics.update(reward_metrics)
+                        print("update metrics")
 
                     # apply kl penalty if available
                     if not self.config.algorithm.use_kl_loss and self.use_reference_policy:
+                        print("apply kl penalty")
                         # apply kl penalty to reward
                         batch, kl_metrics = apply_kl_penalty(batch, self.kl_ctrl, self.config.algorithm.kl_penalty)
+                        print("finish penalty")
                         metrics.update(kl_metrics)
                     else:
+                        print("token level rewards")
                         batch.batch["token_level_rewards"] = batch.batch["token_level_scores"]
-
+                    print("compute advantage")
                     # compute advantages, executed on the driver process
                     batch = compute_advantage(
                         batch,

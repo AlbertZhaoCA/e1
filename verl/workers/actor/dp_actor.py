@@ -232,6 +232,7 @@ class DataParallelPPOActor(BasePPOActor):
                 if self.rank == 0:
                     micro_batches = tqdm(micro_batches, desc="Update policy", position=2)
 
+
                 for micro_batch in micro_batches:
                     model_inputs = {**micro_batch.batch, **micro_batch.non_tensor_batch}
                     responses = model_inputs["responses"]

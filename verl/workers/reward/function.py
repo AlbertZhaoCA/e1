@@ -120,7 +120,9 @@ class BatchFunctionRewardManager(FunctionRewardManager):
                 {
                     "response": response_str,
                     "response_length": response_length[i],
-                    "ground_truth": data.non_tensor_batch["ground_truth"][i],
+                    "test_input": data.non_tensor_batch["test_input"][i],
+                    "test_output": data.non_tensor_batch["test_output"][i],
+                    # "ground_truth": data.non_tensor_batch["ground_truth"][i],
                 }
             )
 
