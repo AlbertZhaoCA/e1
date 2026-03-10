@@ -1,112 +1,3 @@
-# import asyncio
-# import re
-# import httpx
-# from typing import Any, Dict, List
-# from examples.reward_function.lexecute import run_scripts_with_timeout  # 你的执行函数
-# from tqdm import tqdm
-# import numpy as np
-
-# MARKDOWN_CODEBLOCK_RE = re.compile(r"^\s*```(?:python|Python|py)?\s*|\s*```\s*$", re.IGNORECASE | re.MULTILINE)
-
-
-# def build_code_prompt(problem: str, reasoning: str) -> str:
-#     return f"""
-# You are an expert algorithm coder. Given a problem, and a high-level strategy, please implement the full solution in code.
-
-# Problem:
-# {problem.strip()}
-
-# High-Level Strategy:
-# {reasoning.strip()}
-
-# Requirements:
-# - Do not Explain anything, wrap your code in this format ```python```
-# - **MOST IMPORTANT**: You should use input() to input and print() to output in your script.
-
-# """
-
-
-
-
-# async def async_call_vllm(prompt: str, n: int = 3) -> List[str]:
-#     try:
-#         async with httpx.AsyncClient() as client:
-#             res = await client.post(
-#                 "http://192.168.214.17:8000/v1/chat/completions",
-#                 json={
-#                     "model": "/scratch/pioneer/jobs/job.2664465.hpc/models/Qwen2.5-Coder-7B-Instruct",
-#                     "messages": [{"role": "user", "content": prompt}],
-#                     "n": n,
-#                     "temperature":1.0
-#                 },
-#                 timeout=60.0
-#             )
-#             choices = res.json()["choices"]
-#             return [MARKDOWN_CODEBLOCK_RE.sub("", c["message"]["content"]).strip() for c in choices]
-#     except Exception as e:
-#         print(f"[ERROR] VLLM call failed: {e}")
-#         return ["raise Exception('VLLM generation failed')"] * n
-
-
-# async def async_accuracy_reward(reward_input: Dict[str, Any], n: int = 3) -> Dict[str, float]:
-#     prompt = build_code_prompt(reward_input["question"], reward_input["response"])
-#     code_candidates = await async_call_vllm(prompt, n=n)
-
-#     scores = []
-
-#     for i, code in enumerate(code_candidates):
-#         try:
-#             results = await asyncio.to_thread(
-#                 run_scripts_with_timeout,
-#                 script=code,
-#                 inputs=reward_input["test_input"],
-#                 time_limit=1.0,
-#             )
-
-#             total = len(reward_input["test_output"])
-#             correct_count = 0
-#             errors = 0
-
-#             for res, expected in zip(results, reward_input["test_output"]):
-#                 if "Timeout Error" in res or "error:" in res.lower():
-#                     errors += 1
-#                     continue
-
-#                 if " ".join(res.split()) == " ".join(expected.split()):
-#                     correct_count += 1
-
-#             acc = correct_count / total if total > 0 else 0.0
-#             scores.append(acc)
-
-#         except Exception as e:
-#             print(f"[WARNING] Evaluation failed for candidate {i}: {e}")
-#             scores.append(0.0)
-
-#     avg_score = sum(scores) / len(scores) if scores else 0.0
-#     len_score = 0.1 if len(reward_input["response"]) < 320 else 0.0
-
-#     final_score = min(avg_score + len_score, 1.0)
-
-
-#     print(f"[REWARD] Average of {n} generations: {avg_score:.3f}, Final score: {final_score:.3f}", "Len score:", len_score)
-#     return {"overall": final_score, "accuracy": avg_score, "len_score": len_score}
-
-
-# def compute_score(reward_inputs: List[Dict[str, Any]], batch_size: int = 1024, n: int = 2) -> List[Dict[str, float]]:
-#     if not isinstance(reward_inputs, list):
-#         raise ValueError("Please use `reward_type=batch` for math reward function.")
-
-#     async def run_all_batches():
-#         all_scores = []
-#         for i in tqdm(range(0, len(reward_inputs), batch_size), desc="Batches"):
-#             batch = reward_inputs[i: i + batch_size]
-#             tasks = [async_accuracy_reward(inp, n=n) for inp in batch]
-#             results = await asyncio.gather(*tasks)
-#             all_scores.extend(results)
-#         return all_scores
-
-#     return asyncio.run(run_all_batches())
-
 import asyncio
 import re
 import httpx
@@ -143,9 +34,9 @@ async def async_call_vllm(prompt: str, n: int = 2) -> List[str]:
     try:
         async with httpx.AsyncClient() as client:
             res = await client.post(
-                "http://192.168.214.13:8000/v1/chat/completions",
+                "http://localhost:8000/v1/chat/completions",
                 json={
-                    "model": "/scratch/pioneer/jobs/job.2664465.hpc/models/saves/agent_codegen/no_complexity/global_step_20/actor/huggingface",
+                    "model": "Qwen/Qwen2.5-7B-Instruct",
                     "messages": [{"role": "user", "content": prompt}],
                     "n": n,
                     "temperature": 1.0

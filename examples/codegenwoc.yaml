@@ -42,7 +42,7 @@ worker:
     padding_free: true
     ulysses_size: 1
     model:
-      model_path: /scratch/pioneer/jobs/job.2664465.hpc/models/Qwen2.5-Coder-7B-Instruct
+      model_path: Qwen/Qwen2.5-7B-Instruct
       enable_gradient_checkpointing: true
       trust_remote_code: false
       freeze_vision_tower: false
