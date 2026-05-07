@@ -1,4 +1,4 @@
-# AlgoForge: Specializing Code Generation Agents through Collaborative Reinforcement Learning
+# CoRe-Code: Collaborative Reinforcement Learning for Code Generation
 
 ## Requirements
 
